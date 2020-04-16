@@ -1,0 +1,12 @@
+name: covid-indo
+title: covid-indo
+username:
+account: amrirohman
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2059674
+bundleId: 2970799
+url: https://amrirohman.shinyapps.io/covid-indo/
+when: 1586070393.89004
+asMultiple: FALSE
+asStatic: FALSE

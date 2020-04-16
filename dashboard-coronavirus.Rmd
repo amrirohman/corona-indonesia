@@ -1,0 +1,457 @@
+---
+title: "Coronavirus Indonesia"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    social: menu
+    source_code: embed
+    vertical_layout: fill
+    theme: flatly
+runtime: shiny
+---
+
+```{js}
+$('.navbar-inverse').removeClass('navbar-inverse').addClass('navbar-default');
+```
+
+```{r setup, include=FALSE}
+# loading packages
+library(flexdashboard)
+library(httr)
+library(jsonlite)
+library(tidyverse)
+library(plotly)
+library(janitor)
+library(shiny)
+library(DT)
+library(geojsonio)
+library(leaflet)
+
+# color palette
+confirmed_color <- "#5c15a2"
+active_color <- "#1f77b4"
+recovered_color <- "#15a589"
+death_color <- "#a21515"
+
+#==============================================
+# loading data corona provinsi
+base2 <- "https://api.kawalcorona.com/indonesia/provinsi"
+prov.corona.df <- 
+  GET(base2) %>%
+  content(., "text") %>%
+  fromJSON(., flatten = TRUE) %>%
+  as.data.frame() %>%
+  mutate_if(is.integer, as.numeric) %>%
+  rename_all(., ~str_remove(.x, "attributes\\.")) %>%
+  clean_names() %>%
+  rename("confirmed" = "kasus_posi",
+         "recovered" = "kasus_semb",
+         "deaths" = "kasus_meni",
+         "kode" = "kode_provi")
+
+prov.corona.df$provinsi[prov.corona.df$provinsi == "DKI Jakarta"] <- "Jakarta Raya"
+prov.corona.df$provinsi[prov.corona.df$provinsi == "Kepulauan Bangka Belitung"] <- "Bangka Belitung"
+prov.corona.df$provinsi[prov.corona.df$provinsi == "Daerah Istimewa Yogyakarta"] <- "Yogyakarta"
+
+base22 <- 'https://raw.githubusercontent.com/yusufsyaifudin/wilayah-indonesia/master/data/list_of_area/regencies.json'
+prov.longlat.df <- 
+  GET(base22) %>%
+  content(., "text") %>%
+  fromJSON(., flatten = TRUE) %>%
+  as.data.frame() %>%
+  group_by(province_id) %>%
+  summarise(lat= mean(latitude),
+            long= mean(longitude)) %>%
+  rename("kode" = "province_id")
+
+# loading data corona indonesia pnpb
+base4 <- "https://services5.arcgis.com/VS6HdKS0VfIhv8Ct/arcgis/rest/services/Statistik_Perkembangan_COVID19_Indonesia/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json"
+pnpb.corona.df <- 
+  GET(base4) %>%
+  content(., "text") %>%
+  fromJSON(., flatten = TRUE) %>%
+  .$features %>%
+  mutate_all(as.numeric) %>%
+  rename_all(., ~str_remove(.x, "attributes\\.")) %>%
+  clean_names() %>%
+  rename("confirmed" = "jumlah_kasus_kumulatif",
+         "recovered" = "jumlah_pasien_sembuh",
+         "deaths" = "jumlah_pasien_meninggal",
+         "confirmed_per_day" = "jumlah_kasus_baru_per_hari",
+         "recovered_per_day" = "jumlah_kasus_sembuh_per_hari",
+         "deaths_per_day" = "jumlah_kasus_meninggal_per_hari") %>%
+  mutate(tanggal = seq(as.Date("2020-03-02"), as.Date("2020-03-01") + nrow(.), by = "1 days"))
+
+N <- pnpb.corona.df %>%
+  .$confirmed %>% 
+  na.omit() %>%
+  length()
+
+pnpb.corona.df <- head(pnpb.corona.df, n=N)
+```
+
+Summary
+=======================================================================
+Row
+-----------------------------------------------------------------------
+### positif {.value-box}
+
+```{r}
+valueBox(value = sum(pnpb.corona.df$confirmed_per_day), 
+         caption = "Angka Positif Corona", 
+         icon = "fas fa-user-md", 
+         color = confirmed_color)
+```
+
+### kematian {.value-box}
+
+```{r}
+valueBox(value = sum(pnpb.corona.df$deaths_per_day), 
+         caption = "Angka Kematian Corona", 
+         icon = "fas fa-ambulance", 
+         color = death_color)
+```
+
+### sembuh {.value-box}
+
+```{r}
+valueBox(value = sum(pnpb.corona.df$recovered_per_day), 
+         caption = "Angka Pasien Sembuh Corona", 
+         icon = "fas fa-heartbeat", 
+         color = recovered_color)
+```
+
+### persen kematian {.value-box}
+
+```{r}
+valueBox(value = paste(round(tail(pnpb.corona.df$persentase_pasien_meninggal, n=1) ,digits=2), "%"), 
+         caption = "Persentase Kematian Corona", 
+         icon = "fas fa-user-md", 
+         color = "#f39c12")
+```
+
+Row
+-----------------------------------------------------------------------
+### pertambahan postif {.value-box}
+
+```{r}
+valueBox(value = paste("+",pnpb.corona.df[nrow(pnpb.corona.df), "confirmed_per_day"]), 
+         caption = "Pertambahan Postif per Hari ini", 
+         icon = "fa fa-user-plus", 
+         color = confirmed_color)
+```
+
+### pertambahan kematian {.value-box}
+
+```{r}
+valueBox(value = paste("+",pnpb.corona.df[nrow(pnpb.corona.df), "deaths_per_day"]), 
+         caption = "Pertambahan Kematian per Hari ini", 
+         icon = "fa fa-user-plus", 
+         color = death_color)
+```
+
+### pertambahan sembuh {.value-box}
+
+```{r}
+valueBox(value = paste("+",pnpb.corona.df[nrow(pnpb.corona.df), "recovered_per_day"]), 
+         caption = "Pertambahan Sembuh per Hari ini", 
+         icon = "fa fa-user-plus", 
+         color = recovered_color)
+```
+
+### tanggal update {.value-box}
+
+```{r}
+valueBox(value = format(Sys.Date(), "%d %B %Y"), 
+         caption = "Tanggal Update", 
+         icon = "fa fa-calendar", 
+         color = "#f39c12")
+```
+
+Row
+-----------------------------------------------------------------------
+### Data Harian Corona Virus Di Indonesia
+
+```{r}
+ggplotly(
+  pnpb.corona.df %>% 
+  select(c("confirmed", "recovered", "deaths", "tanggal")) %>%
+  gather(key = "Status", value = "jumlah", -tanggal) %>%
+  ggplot() +  
+  geom_line(aes(x=tanggal, y=jumlah, color=Status)) +
+  geom_point(aes(x=tanggal, y=jumlah, color=Status)) +
+  scale_color_manual(values=c(confirmed_color, death_color, recovered_color)) +
+  labs(y="Jumlah Pasien", x="Hari ke", caption="Source: PNPB") +
+  theme_minimal()  
+)
+```
+
+Plot 1
+=======================================================================
+Row
+-------------------------------------
+### Top 6 Provinsi Positif Corona
+
+```{r}
+ggplotly(
+  prov.corona.df %>% 
+  arrange(desc(confirmed)) %>%
+  head(n = 6) %>% 
+  ggplot() + 
+  geom_bar(aes(x=reorder(provinsi, +confirmed), y=confirmed), stat="identity", fill=confirmed_color) + 
+  coord_flip() +
+  labs(y="Jumlah Pasien", x="Provinsi", caption="Source: PNPB") +
+  theme_minimal()  
+)
+```  
+
+### Top 6 Provinsi Kematian Corona
+
+```{r}
+ggplotly(
+  prov.corona.df %>% 
+  arrange(desc(deaths)) %>%
+  head(n = 6) %>% 
+  ggplot() + 
+  geom_bar(aes(x=reorder(provinsi, +deaths), y=deaths), stat="identity", fill=death_color) + 
+  coord_flip() +
+  labs(y="Jumlah Pasien", x="Provinsi", caption="Source: PNPB") +
+  theme_minimal()  
+)
+```
+
+Row
+-------------------------------------
+### Top 6 Provinsi Sembuh Corona
+
+```{r}
+ggplotly(
+  prov.corona.df %>% 
+  arrange(desc(recovered)) %>%
+  head(n = 6) %>% 
+  ggplot() + 
+  geom_bar(aes(x=reorder(provinsi, +recovered), y=recovered), stat="identity", fill=recovered_color) + 
+  coord_flip() +
+  labs(y="Jumlah Pasien", x="Provinsi", caption="Source: PNPB") +
+  theme_minimal()  
+)
+```
+
+### Scatterplot Kematian vs Positif Corona
+
+```{r}
+ggplotly(
+  prov.corona.df %>%
+    ggplot() +
+    geom_point(aes(x=deaths, y=confirmed, size=recovered, colour=provinsi)) +
+    geom_text(aes(x=deaths, y=confirmed, label= provinsi)) +
+    scale_y_log10() +
+    scale_x_log10() +
+    labs(y="Postif Corona", x="Kematian Corona", caption="Source: Kawal Corona") +
+    theme_minimal()+
+    theme(legend.position = "none")
+)
+```
+
+Plot 2
+=======================================================================
+Row
+-----------------------------------------------------------------------
+
+### Input {data-width=300}
+
+```{r}
+  selectInput("PROV1", label = h3("Provinsi 1:"), 
+    choices = unique(prov.corona.df$provinsi), 
+    selected = unique(prov.corona.df$provinsi)[1])
+
+  selectInput("PROV2", label = h3("Provinsi 2:"), 
+    choices = unique(prov.corona.df$provinsi), 
+    selected = unique(prov.corona.df$provinsi)[2])
+```
+
+### Pie Chart 1
+
+```{r}
+colors <- c('rgb(92, 21, 162)', #confirmed_color
+            'rgb(21, 165, 137)', #recovered_color
+            'rgb(162, 21, 21)') #death_color
+
+renderPlotly({
+prov.corona.df %>%
+  filter(provinsi == input$PROV1) %>%
+  select(c("provinsi", "confirmed", "recovered", "deaths")) %>%
+  gather(key=provinsi, value=status) %>%
+  plot_ly(., labels = ~provinsi, values = ~status, 
+          type = 'pie', marker = list(colors = colors)) %>%
+    layout(title = paste("Pie Charts Provinsi", as.character(input$PROV1)))
+})
+```
+
+### Pie Chart 2 
+
+```{r}
+renderPlotly({
+prov.corona.df %>%
+  filter(provinsi == input$PROV2) %>%
+  select(c("provinsi", "confirmed", "recovered", "deaths")) %>%
+  gather(key=provinsi, value=status) %>%
+  plot_ly(., labels = ~provinsi, values = ~status, 
+          type = 'pie', marker = list(colors = colors)) %>%
+    layout(title = paste("Pie Charts Provinsi", as.character(input$PROV2)))
+})
+```
+
+Row {data-height=700}
+-------------------------------------
+
+### Provinsi Terjangkit
+
+
+```{r}
+ggplotly(
+  prov.corona.df %>%
+  select(c(3:6)) %>%
+  gather(key = "status", value = "jumlah_pasien",  -provinsi) %>%
+  ggplot(aes(fill=status, x=reorder(provinsi, -jumlah_pasien), y=jumlah_pasien)) +
+  geom_bar(position="stack", stat="identity") +
+  scale_fill_manual("status", values = c(confirmed = confirmed_color,
+                                         recovered = recovered_color,
+                                         deaths = death_color))+
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  labs(y="Jumlah Pasien", x="Provinsi", caption="Source: Kawal Corona")
+)
+```
+
+Data Tabel
+=======================================================================
+Row
+-------------------------------------
+### Tabel Data PNPB
+
+```{r}
+pnpb.corona.df %>%
+  select(c("tanggal", "hari_ke", "confirmed", "recovered", "deaths")) %>%
+  datatable(rownames = FALSE,
+            colnames = c("Tanggal", "Hari Ke", "Confirmed", "Recovered", "Death"),
+            options = list(pageLength = nrow(pnpb.corona.df), dom = 'tip'))
+```   
+ 
+### Tabel Data Kawal Corona
+    
+```{r}
+prov.corona.df %>%
+  select(c("provinsi", "confirmed", "recovered", "deaths")) %>%
+  datatable(rownames = FALSE,
+            colnames = c("Provinsi", "Confirmed", "Recovered", "Death"),
+            options = list(pageLength = nrow(prov.corona.df), dom = 'tip'))
+```
+
+Peta
+=======================================================================
+Row
+-----------------------------------------------------------------------
+### Peta Corona Tiap Provinsi di Indonesia 
+
+```{r}
+map <- merge(prov.longlat.df, prov.corona.df, by="kode")
+
+mytext <- paste(
+  "<strong> Provinsi ", map$provinsi, "</strong><br>", 
+  "Terkonfirmasi Positif :", map$confirmed, 
+  sep=" ") %>%
+  lapply(htmltools::HTML)
+
+map %>%
+  leaflet() %>% 
+  addTiles() %>%
+  addCircles(lng = ~long, lat = ~lat, weight = 25,
+             radius = ~confirmed*35, popup = ~provinsi,
+             label =  mytext, color = "purple")
+```
+
+Antisipasi
+=======================================================================
+Row
+-----------------------------------------------------------------------
+### Q&A on Coronaviruses {.value-box}
+
+```{r}
+valueBox(value = "Q&A on Coronaviruses", 
+         caption = "Baca selengkapnya - Klik Disini",
+         icon = "fa fa-medkit", 
+         href = "https://www.who.int/news-room/q-a-detail/q-a-coronaviruses",
+         color = death_color)
+```
+
+Row
+-----------------------------------------------------------------------
+### Situs Terpercaya {.value-box}
+
+```{r}
+valueBox(value = "Situs Terpercaya Pantau Virus Corona di Indonesia",
+         caption = "Baca selengkapnya - Klik Disini",
+         icon = "fa fa-medkit", 
+         href = "https://www.cnbcindonesia.com/tech/20200318160732-37-145874/simak-ini-6-situs-terpercaya-pantau-virus-corona-di-ri",
+         color = death_color)
+```
+
+Row
+-----------------------------------------------------------------------
+### Cara Cuci Tangan yang Benar Menurut WHO {.value-box}
+
+```{r}
+valueBox(value = "Cara Cuci Tangan yang Benar Menurut WHO",
+         caption = "Tonton Video -  Klik Disini",
+         icon = "fa fa-youtube-play", 
+         href = "https://www.youtube.com/watch?v=HChg7g6oPjE",
+         color = death_color)
+```
+
+Row
+-----------------------------------------------------------------------
+### Menggunakan Masker Tidak Boleh Asal {.value-box}
+
+```{r}
+valueBox(value = "Menggunakan Masker Tidak Boleh Asal",
+         caption = "Baca selengkapnya - Klik Disini",
+         icon = "fa fa-medkit", 
+         href = "https://www.cigna.co.id/health-wellness/tips-menggunakan-masker-agar-tak-tertular-virus-corona",
+         color = death_color)
+```
+
+Tentang
+=======================================================================
+
+**Coronavirus Indonesia Dashboard**
+
+Dashboard ini menjelaskan secera sederhana tentang gambaran virus corona di indonesia. Dibuat oleh Ahsan Amri Rohman di Sidoarjo, Jawa Timur. 
+
+**Data**
+
+Data ini diperoleh dari [PNPB](https://bnpb-inacovid19.hub.arcgis.com/datasets/statistik-perkembangan-covid19-indonesia/geoservice) dan [Kawal Corona](https://kawalcorona.com/api/) menggunakan layanan API (Web Service).
+
+**Packages**
+
+Beberapa library yang membantu saya dalam menyelesaikan dashboard ini adalah sebagai berikut.
+
+* flexdashboard - membuat dashboard
+* httr - memperoleh data melalui layanan API
+* jsonlite - merubah data berformat json menjadi data frame
+* tidyverse - merubah / mengatur bentuk data
+* plotly - membuat plot interaktif
+* janitor - membersihkan data
+* DT - membuat data frame interaktif
+* leaflet -  membuat peta
+
+**Kontribusi**
+
+Ahsan Amri Rohman,<br> 
+Sidoarjo.<br>
+[Instagram](https://www.instagram.com/amri.rohman/)
+| [Rpubs](https://rpubs.com/amrirohman/)
+| [Email](ahsanamrirohman@gmail.com).
+
+
+
