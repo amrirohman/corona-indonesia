@@ -2,7 +2,7 @@
 Coronavirus Indonesia Dashboard
 ===================================
 
-Dashboard ini menjelaskan secera sederhana tentang gambaran virus corona di indonesia. 
+Dashboard ini menjelaskan secera sederhana tentang gambaran virus corona di indonesia. Silahkan berkunjung https://amrirohman.shinyapps.io/dashboard-coronavirus/
 
 **Data**
 
