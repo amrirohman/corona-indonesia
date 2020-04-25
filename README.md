@@ -22,8 +22,8 @@ Beberapa library yang membantu saya dalam menyelesaikan dashboard ini adalah seb
 
 **Kontribusi**
 
-Ahsan Amri Rohman,<br> 
-Sidoarjo, Jawa timur, ID.
+Ahsan Amri Rohman.<br> 
+Sidoarjo, Jawa timur, ID.<br> 
 [Instagram](https://www.instagram.com/amri.rohman/)
 | [Rpubs](https://rpubs.com/amrirohman/)
 | [Email](ahsanamrirohman@gmail.com)
