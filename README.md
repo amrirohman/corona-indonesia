@@ -4,6 +4,8 @@ Coronavirus Indonesia Dashboard
 
 Dashboard ini menjelaskan secera sederhana tentang gambaran virus corona di indonesia. Silahkan berkunjung https://amrirohman.shinyapps.io/dashboard-coronavirus/
 
+![Preview](https://miro.medium.com/max/1400/1*4NlFwjBhWG6ixJcxJUokAg.png)
+
 **Data**
 
 Data ini diperoleh dari [PNPB](https://bnpb-inacovid19.hub.arcgis.com/datasets/statistik-perkembangan-covid19-indonesia/geoservice) dan [Kawal Corona](https://kawalcorona.com/api/) menggunakan layanan API (Web Service).
