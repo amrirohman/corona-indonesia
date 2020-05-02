@@ -29,4 +29,5 @@ Sidoarjo, Jawa timur, ID.<br>
 [Instagram](https://www.instagram.com/amri.rohman/)
 | [Rpubs](https://rpubs.com/amrirohman/)
 | [Email](ahsanamrirohman@gmail.com)
-| [Github](https://github.com/amrirohman/corona-indonesia).
+| [Github](https://github.com/amrirohman/corona-indonesia)
+| [Medium](https://medium.com/@amrirohman)
