@@ -1,10 +1,9 @@
+![Preview](https://miro.medium.com/max/1400/1*4NlFwjBhWG6ixJcxJUokAg.png)
 
 Coronavirus Indonesia Dashboard
 ===================================
 
 Dashboard ini menjelaskan secera sederhana tentang gambaran virus corona di indonesia. Silahkan berkunjung https://amrirohman.shinyapps.io/dashboard-coronavirus/
-
-![Preview](https://miro.medium.com/max/1400/1*4NlFwjBhWG6ixJcxJUokAg.png)
 
 **Data**
 
